@@ -25,11 +25,8 @@
         nav a.active { opacity: 1; color: var(--primary); }
 
         .container { padding: 50px; max-width: 1200px; margin: 0 auto; }
-        
         .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 20px; }
-        
         h1 { font-family: 'Syncopate'; font-size: 1.5rem; margin: 0; }
-
         .controls { display: flex; gap: 15px; align-items: center; }
 
         #searchInput {
@@ -99,8 +96,7 @@
                 <th>Action</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            </tbody>
+        <tbody id="tableBody"></tbody>
     </table>
 </div>
 
@@ -122,6 +118,7 @@
         
         allGuests = data;
         renderTable(allGuests);
+        updateStats(); // Ensure stats update on fresh load
     }
 
     function renderTable(data) {
@@ -136,13 +133,15 @@
             const row = `<tr>
                 <td style="font-family:monospace; font-weight:bold; color:var(--primary)">${guest.ticket_id}</td>
                 <td>${guest.full_name}</td>
-                <td>${guest.phone_number}</td>
+                <td>${guest.phone_number || 'N/A'}</td>
                 <td style="font-family:monospace">${guest.mpesa_code}</td>
                 <td>${actionHTML}</td>
             </tr>`;
             body.innerHTML += row;
         });
+    }
 
+    function updateStats() {
         document.getElementById('totalTickets').innerText = allGuests.length;
         document.getElementById('checkedIn').innerText = allGuests.filter(g => g.is_scanned).length;
     }
@@ -157,10 +156,9 @@
                 .eq('ticket_id', ticketID);
 
             if (error) {
-                alert("Error verifying guest: " + error.message);
+                alert("Error: " + error.message);
             } else {
-                alert(`${guestName} has been verified successfully.`);
-                loadData(); // Refresh table
+                loadData(); // Refresh everything
             }
         }
     }
@@ -168,15 +166,15 @@
     function filterData() {
         const term = document.getElementById('searchInput').value.toLowerCase();
         const filtered = allGuests.filter(guest => 
-            guest.full_name.toLowerCase().includes(term) ||
-            guest.ticket_id.toLowerCase().includes(term) ||
-            guest.mpesa_code.toLowerCase().includes(term)
+            (guest.full_name || "").toLowerCase().includes(term) ||
+            (guest.ticket_id || "").toLowerCase().includes(term) ||
+            (guest.mpesa_code || "").toLowerCase().includes(term)
         );
         renderTable(filtered);
     }
 
     function exportToCSV() {
-        if (allGuests.length === 0) return alert("No data to export!");
+        if (allGuests.length === 0) return alert("No data!");
         const headers = ["Ticket ID", "Full Name", "Phone", "M-Pesa Code", "Status"];
         const rows = allGuests.map(g => [g.ticket_id, g.full_name, g.phone_number, g.mpesa_code, g.is_scanned ? 'In' : 'Out']);
         let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");

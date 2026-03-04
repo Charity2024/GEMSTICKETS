@@ -8,174 +8,47 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
-            --primary: #e50914; /* Poster Red */
-            --orange: #ff7300; /* Poster Orange */
-            --success: #00ff88;
-            --error: #ff4d4d;
-            --bg: #0a0a0a;
-            --glass: rgba(255, 255, 255, 0.07);
+            --primary: #e50914; --orange: #ff7300; --success: #00ff88;
+            --error: #ff4d4d; --bg: #0a0a0a; --glass: rgba(255, 255, 255, 0.07);
             --glass-border: rgba(255, 255, 255, 0.12);
         }
-
         body {
             font-family: 'Inter', system-ui, sans-serif;
             background: radial-gradient(circle at bottom left, #3d1111, var(--bg));
-            color: white;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+            color: white; margin: 0; display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
         }
-
-        /* Shared Navigation */
         nav {
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            background: rgba(10, 10, 10, 0.8);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid var(--glass-border);
-            z-index: 100;
+            padding: 20px; display: flex; justify-content: center; gap: 25px;
+            background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--glass-border); z-index: 100;
         }
-
         nav a {
-            color: white;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.6;
-            transition: 0.3s;
+            color: white; text-decoration: none; font-size: 0.85rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; transition: 0.3s;
         }
-
         nav a:hover { opacity: 1; color: var(--orange); }
-
-        header {
-            padding: 20px;
-            text-align: center;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 1rem;
-            letter-spacing: 3px;
-            color: white;
-            text-transform: uppercase;
-        }
-
-        #reader-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
-
-        #reader {
-            width: 100%;
-            max-width: 450px;
-            border-radius: 30px;
-            overflow: hidden;
-            border: 2px solid var(--glass-border);
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            background: black;
-        }
-
-        /* Result Overlay */
-        #overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-            padding: 30px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .result-card {
-            background: var(--glass);
-            padding: 50px 30px;
-            border-radius: 40px;
-            width: 100%;
-            max-width: 350px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-
-        .status-icon {
-            font-size: 100px;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 0 20px currentColor);
-        }
-
-        .guest-name {
-            font-size: 1.8rem;
-            font-weight: 900;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: -1px;
-        }
-
-        .status-msg {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 40px;
-            letter-spacing: 1px;
-        }
-
-        .btn-continue {
-            background: white;
-            color: black;
-            border: none;
-            padding: 22px;
-            font-size: 1rem;
-            font-weight: 900;
-            border-radius: 20px;
-            cursor: pointer;
-            width: 100%;
-            text-transform: uppercase;
-            transition: 0.3s;
-        }
-
-        .btn-continue:active { transform: scale(0.95); }
-
-        /* Success/Error Colors */
+        header { padding: 20px; text-align: center; }
+        header h1 { margin: 0; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; }
+        #reader-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; position: relative; }
+        #reader { width: 100%; max-width: 450px; border-radius: 30px; overflow: hidden; border: 2px solid var(--glass-border); background: black; }
+        #overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; padding: 30px; text-align: center; backdrop-filter: blur(10px); }
+        .result-card { background: var(--glass); padding: 50px 30px; border-radius: 40px; width: 100%; max-width: 350px; border: 1px solid var(--glass-border); }
+        .status-icon { font-size: 100px; margin-bottom: 20px; }
+        .guest-name { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
+        .status-msg { font-size: 1.1rem; font-weight: 600; margin-bottom: 40px; }
+        .btn-continue { background: white; color: black; border: none; padding: 22px; font-size: 1rem; font-weight: 900; border-radius: 20px; cursor: pointer; width: 100%; text-transform: uppercase; }
         .is-success .status-icon, .is-success .status-msg { color: var(--success); }
         .is-error .status-icon, .is-error .status-msg { color: var(--error); }
-
-        #controls {
-            margin-top: 30px;
-            display: flex;
-            gap: 15px;
-        }
-
-        .control-btn {
-            padding: 15px 25px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            color: white;
-            border-radius: 15px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
+        #controls { margin-top: 30px; display: flex; gap: 15px; }
+        .control-btn { padding: 15px 25px; background: var(--glass); border: 1px solid var(--glass-border); color: white; border-radius: 15px; cursor: pointer; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
     <nav>
-        <a href="index.html">Tickets</a>
+        <a href="index.html">Tickets & Admin</a>
         <a href="scan.html" style="color: var(--orange); opacity: 1;">Staff Scan</a>
-        <a href="dashboard.html">Admin</a>
     </nav>
 
     <header>
@@ -207,7 +80,7 @@
             sessionStorage.setItem("gems_auth", "true");
         } else {
             alert("Unauthorized Access");
-            window.location.href = "add-ticket.html";
+            window.location.href = "index.html";
         }
     }
 
@@ -220,16 +93,8 @@
     let isTorchOn = false;
 
     const startScanner = () => {
-        const config = { 
-            fps: 25, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-        .catch(err => {
-            console.error("Camera Error:", err);
-            alert("Please allow camera access to scan tickets.");
-        });
+        html5QrCode.start({ facingMode: "environment" }, { fps: 25, qrbox: 250 }, onScanSuccess)
+        .catch(() => alert("Camera permission required."));
     };
 
     async function onScanSuccess(decodedText) {
@@ -237,7 +102,7 @@
         html5QrCode.pause();
 
         try {
-            // Find ticket by QR Token
+            // Updated to match your SQL columns: is_scanned
             const { data: ticket, error } = await supabaseClient
                 .from('tickets')
                 .select('*')
@@ -246,14 +111,14 @@
 
             if (error || !ticket) {
                 showUI('error', 'INVALID TICKET', 'This code does not exist.');
-            } else if (ticket.is_verified) {
+            } else if (ticket.is_scanned) {
                 showUI('error', ticket.full_name, 'ALREADY IN VENUE');
             } else {
-                // Mark as verified
+                // Mark as scanned (matching your database column name)
                 const { error: updErr } = await supabaseClient
                     .from('tickets')
-                    .update({ is_verified: true, verified_at: new Date().toISOString() })
-                    .eq('id', ticket.id);
+                    .update({ is_scanned: true, scanned_at: new Date().toISOString() })
+                    .eq('ticket_id', ticket.ticket_id);
                 
                 if (updErr) throw updErr;
                 
@@ -261,7 +126,7 @@
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             }
         } catch (err) {
-            showUI('error', 'SYSTEM ERROR', 'Check your internet connection.');
+            showUI('error', 'SYSTEM ERROR', 'Check database columns or internet.');
         }
     }
 
@@ -269,8 +134,7 @@
         const overlay = document.getElementById('overlay');
         overlay.className = type === 'success' ? 'is-success' : 'is-error';
         overlay.style.display = 'flex';
-        
-        document.getElementById('status-icon').innerHTML = type === 'success' ? '✓' : '✕';
+        document.getElementById('status-icon').innerText = type === 'success' ? '✓' : '✕';
         document.getElementById('guest-name').innerText = name;
         document.getElementById('status-msg').innerText = msg;
     }
@@ -282,9 +146,8 @@
 
     function toggleTorch() {
         isTorchOn = !isTorchOn;
-        html5QrCode.applyVideoConstraints({
-            advanced: [{ torch: isTorchOn }]
-        }).catch(() => console.log("Flashlight not available on this device"));
+        html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] })
+        .catch(() => console.log("Flashlight unavailable"));
     }
 
     window.addEventListener('load', startScanner);

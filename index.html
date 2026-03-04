@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gems Admin | Dashboard & Repair</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #ff3c00; --accent: #ffb800; --bg: #050505; --card-bg: rgba(20, 20, 20, 0.7); --border: rgba(255, 255, 255, 0.1); --success: #00ff88; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); background-image: radial-gradient(circle at 50% 120%, #4a1111 0%, transparent 50%); color: white; margin: 0; min-height: 100vh; }
+        nav { width: 100%; padding: 20px 0; display: flex; justify-content: center; gap: 30px; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+        nav a { color: white; text-decoration: none; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; }
+        nav a.active { opacity: 1; color: var(--primary); }
+        .container { padding: 40px; max-width: 1300px; margin: 0 auto; display: flex; gap: 30px; }
+        .list-section { flex: 2; }
+        .repair-section { flex: 1; background: var(--card-bg); padding: 25px; border-radius: 20px; border: 1px solid var(--border); height: fit-content; position: sticky; top: 100px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        #searchInput { padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white; width: 100%; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 16px; overflow: hidden; }
+        th { background: rgba(255,255,255,0.05); text-align: left; padding: 12px; font-size: 0.65rem; text-transform: uppercase; color: var(--accent); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .btn-small { padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; border: 1px solid; transition: 0.3s; background: transparent; }
+        .btn-verify { border-color: var(--success); color: var(--success); }
+        .btn-repair { border-color: var(--accent); color: var(--accent); margin-left: 5px; }
+        #repairCanvas { width: 100%; border-radius: 10px; margin-top: 15px; display: none; border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="add-ticket.html">Generator</a>
+    <a href="scan.html">Staff Scan</a>
+    <a href="dashboard.html" class="active">Admin</a>
+</nav>
+
+<div class="container">
+    <div class="list-section">
+        <div class="header-flex">
+            <h1 style="font-family:'Syncopate'; font-size: 1.2rem;">GEMS MASTER LIST</h1>
+            <button onclick="exportToCSV()" style="background:var(--accent); color:black; border:none; padding:8px 15px; border-radius:5px; font-weight:900; cursor:pointer;">EXPORT CSV</button>
+        </div>
+        <input type="text" id="searchInput" placeholder="Search Guest Name or ID..." oninput="filterData()">
+        <table>
+            <thead><tr><th>ID</th><th>Guest Name</th><th>M-Pesa</th><th>Actions</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="repair-section">
+        <h3 style="margin-top:0; font-size:0.9rem; color:var(--accent);">TICKET REPAIR TOOL</h3>
+        <p style="font-size:0.75rem; color:#888;">Select a guest from the list to regenerate their image.</p>
+        <div id="repairStatus" style="font-weight:900; color:white; margin:10px 0;"></div>
+        <canvas id="repairCanvas" width="1500" height="400"></canvas>
+        <button id="dlRepair" style="display:none; width:100%; padding:15px; background:var(--success); color:black; border:none; border-radius:8px; font-weight:900; margin-top:15px; cursor:pointer;" onclick="downloadRepaired()">Download Fixed Ticket</button>
+    </div>
+</div>
+
+<script>
+    const supabaseClient = window.supabase.createClient("https://rpkntkivikvwisgwgkzx.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwa250a2l2aWt2d2lzZ3dna3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDk5NjgsImV4cCI6MjA4ODEyNTk2OH0._EQI_iPpCGCjXmamFnACTSjy57X_JGBcKNx4vbsRw_8");
+    let allGuests = [];
+    const bg = new Image(); bg.src = "background.jpeg";
+
+    async function loadData() {
+        const { data } = await supabaseClient.from('tickets').select('*').order('created_at', { ascending: false });
+        allGuests = data || [];
+        renderTable(allGuests);
+    }
+
+    function renderTable(data) {
+        const body = document.getElementById('tableBody');
+        body.innerHTML = '';
+        data.forEach(g => {
+            body.innerHTML += `<tr>
+                <td style="color:var(--primary); font-weight:bold;">${g.ticket_id}</td>
+                <td>${g.full_name}</td>
+                <td style="font-family:monospace;">${g.mpesa_code}</td>
+                <td>
+                    <button class="btn-small btn-verify" onclick="manualVerify('${g.ticket_id}')">${g.is_scanned ? 'IN' : 'VERIFY'}</button>
+                    <button class="btn-small btn-repair" onclick="prepRepair('${g.ticket_id}')">FIX IMG</button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function prepRepair(id) {
+        const guest = allGuests.find(g => g.ticket_id === id);
+        document.getElementById('repairStatus').innerText = `REPAIRING: ${guest.ticket_id}`;
+        
+        QRCode.toDataURL(guest.qr_token, { margin: 1, width: 220 }, function (err, url) {
+            const canvas = document.getElementById("repairCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.style.display = "block";
+            
+            ctx.fillStyle = "white"; ctx.fillRect(0, 0, 1500, 400);
+            if (bg.complete) ctx.drawImage(bg, 0, 0, 1200, 400);
+
+            const qrImg = new Image();
+            qrImg.onload = () => {
+                ctx.drawImage(qrImg, 1240, 90, 220, 220);
+                ctx.save();
+                ctx.translate(1485, 380); ctx.rotate(-Math.PI / 2);
+                ctx.fillStyle = "black"; ctx.font = "bold 22px Courier New";
+                ctx.fillText("ID: " + guest.ticket_id, 0, 0);
+                ctx.fillStyle = "#888"; ctx.font = "bold 18px sans-serif";
+                ctx.fillText(guest.full_name.toUpperCase(), 210, 0);
+                ctx.restore();
+                document.getElementById('dlRepair').style.display = "block";
+            };
+            qrImg.src = url;
+        });
+    }
+
+    function downloadRepaired() {
+        const canvas = document.getElementById("repairCanvas");
+        const link = document.createElement('a');
+        link.download = `FIXED_TICKET.jpg`;
+        link.href = canvas.toDataURL("image/jpeg", 1.0);
+        link.click();
+    }
+
+    function filterData() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        renderTable(allGuests.filter(g => g.full_name.toLowerCase().includes(term) || g.ticket_id.toLowerCase().includes(term)));
+    }
+
+    loadData();
+</script>
+</body>
+</html>

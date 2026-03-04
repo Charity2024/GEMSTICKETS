@@ -16,24 +16,21 @@
 
         .container { padding: 40px; max-width: 1200px; margin: 0 auto; }
         
-        /* Generator Styling */
         .gen-section { display: flex; gap: 30px; margin-bottom: 60px; background: var(--card-bg); padding: 30px; border-radius: 24px; border: 1px solid var(--border); }
         .gen-inputs { flex: 1; }
         .gen-preview { flex: 1.5; text-align: center; }
         #previewCanvas { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #000; }
 
         input { width: 100%; padding: 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: white; margin-bottom: 15px; box-sizing: border-box; }
-        .btn-main { width: 100%; padding: 16px; background: white; color: black; border: none; border-radius: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+        .btn-main { width: 100%; padding: 16px; background: white; color: black; border: none; border-radius: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; margin-bottom: 10px; }
         .btn-main:hover { background: var(--primary); color: white; }
 
-        /* Admin Table Styling */
         .admin-section { background: var(--card-bg); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
         th { background: rgba(255,255,255,0.05); text-align: left; padding: 15px; font-size: 0.65rem; color: var(--accent); text-transform: uppercase; }
         td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; }
-
-        .repair-overlay { position: fixed; bottom: 20px; right: 20px; width: 300px; background: #111; border: 2px solid var(--primary); padding: 15px; border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        
+        .repair-overlay { position: fixed; bottom: 20px; right: 20px; width: 300px; background: #111; border: 2px solid var(--primary); padding: 15px; border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }
     </style>
 </head>
 <body>
@@ -52,9 +49,11 @@
             <input type="text" id="phone_number" placeholder="Phone (e.g. 07...)">
             <input type="text" id="mpesa_code" placeholder="M-Pesa Code (10 chars)" maxlength="10">
             <button id="submitBtn" class="btn-main" onclick="processRegistration()">Generate & Save</button>
+            
             <div id="downloadArea" style="display:none; margin-top:15px;">
-                <button class="btn-main" style="background:var(--success)" onclick="downloadImg('previewCanvas')">Download Ticket</button>
-                <p style="font-size:0.7rem; color:#888; margin-top:10px; cursor:pointer;" onclick="location.reload()">+ Create Another</p>
+                <button id="dlBtn" class="btn-main" style="background:var(--success); color:black;">Download Ticket</button>
+                <button id="msgBtn" class="btn-main" style="background:var(--accent); color:black;">Copy Invite Message</button>
+                <p style="font-size:0.7rem; color:#888; margin-top:10px; cursor:pointer; text-align:center;" onclick="location.reload()">+ Create Another</p>
             </div>
         </div>
         <div class="gen-preview">
@@ -77,7 +76,7 @@
 <div id="repairOverlay" class="repair-overlay">
     <h4 style="margin:0 0 10px 0; font-size:0.7rem; color:var(--accent);">REPAIRING TICKET</h4>
     <canvas id="repairCanvas" width="1500" height="400" style="width:100%; border-radius:5px;"></canvas>
-    <button class="btn-main" style="margin-top:10px; font-size:0.7rem; padding:10px;" onclick="downloadImg('repairCanvas')">Download Fixed</button>
+    <button id="repairDlBtn" class="btn-main" style="margin-top:10px; font-size:0.7rem; padding:10px; background:white; color:black;">Download Fixed</button>
     <button onclick="document.getElementById('repairOverlay').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; display:block; width:100%; margin-top:5px; font-size:0.6rem;">Close</button>
 </div>
 
@@ -103,8 +102,11 @@
                 <td style="font-weight:900; color:var(--primary)">${g.ticket_id}</td>
                 <td>${g.full_name}</td>
                 <td style="font-family:monospace">${g.mpesa_code}</td>
-                <td><span class="status-badge" style="background:${g.is_scanned ? '#00ff8822' : '#ffffff11'}; color:${g.is_scanned ? 'var(--success)' : '#888'}">${g.is_scanned ? 'IN' : 'OUT'}</span></td>
-                <td><button onclick="prepRepair('${g.ticket_id}')" style="background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 8px; cursor:pointer; border-radius:4px; font-size:0.6rem;">FIX</button></td>
+                <td><span class="status-badge" style="color:${g.is_scanned ? 'var(--success)' : '#888'}">${g.is_scanned ? '✅ IN' : '❌ OUT'}</span></td>
+                <td>
+                    <button onclick="prepRepair('${g.ticket_id}')" style="background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 8px; cursor:pointer; border-radius:4px; font-size:0.6rem;">FIX</button>
+                    <button onclick="copyInvite('${g.full_name}', '${g.ticket_id}')" style="background:none; border:1px solid white; color:white; padding:4px 8px; cursor:pointer; border-radius:4px; font-size:0.6rem; margin-left:5px;">COPY MSG</button>
+                </td>
             </tr>`;
         });
     }
@@ -112,17 +114,32 @@
     function drawTicket(id, qrUrl, targetCanvas = "previewCanvas") {
         const canvas = document.getElementById(targetCanvas);
         const ctx = canvas.getContext("2d");
-        const name = (targetCanvas === "previewCanvas" ? document.getElementById("full_name").value : "").toUpperCase() || "GUEST NAME";
+        let nameText = "";
         
+        if (targetCanvas === "previewCanvas") {
+            nameText = document.getElementById("full_name").value || "GUEST NAME";
+        } else {
+            const guest = allGuests.find(g => g.ticket_id === id);
+            nameText = guest ? guest.full_name : "GUEST NAME";
+        }
+
         ctx.fillStyle = "white"; ctx.fillRect(0,0,1500,400);
         if(bg.complete) ctx.drawImage(bg, 0, 0, 1200, 400);
         
         if(qrUrl) {
             const qr = new Image(); 
-            qr.onload = () => ctx.drawImage(qr, 1240, 90, 220, 220);
+            qr.onload = () => {
+                ctx.drawImage(qr, 1240, 90, 220, 220);
+                // Draw text AFTER QR loads to ensure it's on top
+                writeText(ctx, id, nameText.toUpperCase());
+            };
             qr.src = qrUrl;
+        } else {
+            writeText(ctx, id, nameText.toUpperCase());
         }
+    }
 
+    function writeText(ctx, id, name) {
         ctx.save();
         ctx.translate(1485, 380); ctx.rotate(-Math.PI/2);
         ctx.fillStyle = "black"; ctx.font = "bold 22px Courier New";
@@ -154,38 +171,37 @@
             drawTicket(newID, url);
             document.getElementById("downloadArea").style.display = "block";
             btn.style.display = "none";
+            
+            // Set button actions for the new ticket
+            document.getElementById("dlBtn").onclick = () => downloadImg('previewCanvas', newID);
+            document.getElementById("msgBtn").onclick = () => copyInvite(name, newID);
+            
             syncData();
         });
     }
 
     function prepRepair(id) {
         const guest = allGuests.find(g => g.ticket_id === id);
+        if(!guest) return;
         document.getElementById('repairOverlay').style.display = 'block';
         QRCode.toDataURL(guest.qr_token, { margin: 1, width: 220 }, (err, url) => {
-            const canvas = document.getElementById("repairCanvas");
-            const ctx = canvas.getContext("2d");
-            ctx.fillStyle = "white"; ctx.fillRect(0,0,1500,400);
-            ctx.drawImage(bg, 0, 0, 1200, 400);
-            const qr = new Image();
-            qr.onload = () => {
-                ctx.drawImage(qr, 1240, 90, 220, 220);
-                ctx.save();
-                ctx.translate(1485, 380); ctx.rotate(-Math.PI/2);
-                ctx.fillStyle = "black"; ctx.font = "bold 22px Courier New";
-                ctx.fillText("ID: " + guest.ticket_id, 0, 0);
-                ctx.fillStyle = "#888"; ctx.font = "bold 18px sans-serif";
-                ctx.fillText(guest.full_name.toUpperCase(), 210, 0);
-                ctx.restore();
-            };
-            qr.src = url;
+            drawTicket(id, url, "repairCanvas");
+            document.getElementById("repairDlBtn").onclick = () => downloadImg('repairCanvas', id);
         });
     }
 
-    function downloadImg(canvasId) {
+    function downloadImg(canvasId, filename) {
         const link = document.createElement('a');
-        link.download = 'GEMS_TICKET.jpg';
+        link.download = `${filename}.jpg`;
         link.href = document.getElementById(canvasId).toDataURL("image/jpeg", 1.0);
         link.click();
+    }
+
+    function copyInvite(name, id) {
+        const msg = `💎 GEMS IN THE RUFF 💎\n\nHi ${name.split(' ')[0]},\n\nYour payment has been verified! Attached is your official entry ticket for March 9th.\n\nTicket ID: ${id}\n\nPlease save this image and present it at the gate. See you there! 🥂`;
+        navigator.clipboard.writeText(msg).then(() => {
+            alert("Invite message copied to clipboard!");
+        });
     }
 
     function filterData() {

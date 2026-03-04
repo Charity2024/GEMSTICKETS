@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GEMS TICKETS| Admin</title>
+    <title>GEMS TICKETS | Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
@@ -30,13 +30,13 @@
 <body>
 
 <nav>
-    <a href="index.html" class="active">Generator & Admin</a>
+    <a href="index.html" class="active">Generator</a>
     <a href="scan.html">Staff Scan</a>
     <a href="dashboard.html">Admin Dashboard</a>
 </nav>
 
 <div class="container">
-    <h1 style="font-family:'Syncopate'; font-size: 1.2rem; margin-bottom: 20px; color: var(--primary);">01. ISSUE ACTUAL TICKET</h1>
+    <h1 style="font-family:'Syncopate'; font-size: 1.2rem; margin-bottom: 20px; color: var(--primary);">01. ISSUE TICKET</h1>
     <div class="gen-section">
         <div class="gen-inputs">
             <div id="liveCount" style="color:var(--accent); font-weight:900; font-size:0.7rem; margin-bottom:10px;">SYNCING...</div>
@@ -56,10 +56,10 @@
         </div>
     </div>
 
-    <h1 style="font-family:'Syncopate'; font-size: 1.2rem; margin-bottom: 20px; color: var(--primary);">02. ACTUAL GUEST LIST</h1>
+    <h1 style="font-family:'Syncopate'; font-size: 1.2rem; margin-bottom: 20px; color: var(--primary);">02. GUEST LIST</h1>
     <div class="admin-section">
         <table>
-            <thead><tr><th>ID</th><th>Guest Name</th><th>M-Pesa</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Guest Name</th><th>M-Pesa</th><th>Status</th></tr></thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
@@ -74,7 +74,7 @@
     async function syncData() {
         const { data } = await supabaseClient.from('tickets').select('*').order('created_at', { ascending: false });
         allGuests = data || [];
-        document.getElementById('liveCount').innerText = `LIVE GUESTS: ${allGuests.length}`;
+        document.getElementById('liveCount').innerText = `TOTAL GUESTS: ${allGuests.length}`;
         renderTable(allGuests);
     }
 
@@ -87,7 +87,6 @@
                 <td>${g.full_name}</td>
                 <td style="font-family:monospace">${g.mpesa_code}</td>
                 <td>${g.is_scanned ? '✅ IN' : '❌ OUT'}</td>
-                <td><button onclick="copyInvite('${g.full_name}', '${g.ticket_id}')" style="background:none; border:1px solid white; color:white; padding:4px 8px; cursor:pointer; border-radius:4px; font-size:0.6rem;">COPY MSG</button></td>
             </tr>`;
         });
     }
@@ -95,12 +94,12 @@
     async function processRegistration() {
         const name = document.getElementById("full_name").value.trim();
         const mpesa = document.getElementById("mpesa_code").value.trim().toUpperCase();
-        if(!name || mpesa.length !== 10) return alert("Please enter valid details.");
+        if(!name || mpesa.length !== 10) return alert("Please check name and M-Pesa code.");
 
         const btn = document.getElementById("submitBtn");
         btn.disabled = true; btn.innerText = "SAVING...";
 
-        // Logic for naming: GEMS001, GEMS002, etc.
+        // Force naming to start at 001 based on current count
         const newID = "GEMS" + (allGuests.length + 1).toString().padStart(3, '0');
         const token = crypto.randomUUID();
 
@@ -109,7 +108,7 @@
             phone_number: document.getElementById("phone_number").value
         }]);
 
-        if(error) { alert(error.message); btn.disabled = false; return; }
+        if(error) { alert("Supabase Error: " + error.message); btn.disabled = false; return; }
 
         QRCode.toDataURL(token, { margin: 1, width: 220 }, (err, url) => {
             drawTicket(newID, url, name);
@@ -149,7 +148,7 @@
     }
 
     function copyInvite(name, id) {
-        const msg = `💎 GEMS IN THE RUFF 💎\n\nHi ${name.split(' ')[0]},\n\nPayment confirmed! Above is your ticket for March 9th.\n\nTicket ID: ${id}\n\nPlease present this image at the entrance. See you there! 🥂`;
+        const msg = `💎 GEMS IN THE RUFF 💎\n\nHi ${name.split(' ')[0]},\n\nPayment confirmed! Above is your ticket for March 9th.\n\nTicket ID: ${id}\n\nPlease save this image and show it at the gate. See you there! 🥂`;
         navigator.clipboard.writeText(msg).then(() => alert("Message copied!"));
     }
 

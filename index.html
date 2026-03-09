@@ -66,6 +66,17 @@
 </div>
 
 <script>
+    // --- ADMIN SECURITY ---
+    if (sessionStorage.getItem("gems_auth") !== "true") {
+        const pw = prompt("Enter Admin Password:");
+        if (pw === "Gems2026") {
+            sessionStorage.setItem("gems_auth", "true");
+        } else {
+            alert("Unauthorized Access");
+            window.location.href = "scan.html"; // Redirect to the open scan page instead of index loop
+        }
+    }
+
     const supabaseClient = window.supabase.createClient("https://rpkntkivikvwisgwgkzx.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwa250a2l2aWt2d2lzZ3dna3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDk5NjgsImV4cCI6MjA4ODEyNTk2OH0._EQI_iPpCGCjXmamFnACTSjy57X_JGBcKNx4vbsRw_8");
     
     let allGuests = [];

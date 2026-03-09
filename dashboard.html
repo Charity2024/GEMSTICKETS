@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gems Admin | Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -98,9 +99,23 @@
         </thead>
         <tbody id="tableBody"></tbody>
     </table>
+    
+    <!-- Hidden Canvas for Ticket Generation -->
+    <canvas id="ticketCanvas" width="1500" height="400" style="display:none;"></canvas>
 </div>
 
 <script>
+    // --- ADMIN SECURITY ---
+    if (sessionStorage.getItem("gems_auth") !== "true") {
+        const pw = prompt("Enter Admin Password:");
+        if (pw === "Gems2026") {
+            sessionStorage.setItem("gems_auth", "true");
+        } else {
+            alert("Unauthorized Access");
+            window.location.href = "index.html";
+        }
+    }
+
     const supabaseClient = window.supabase.createClient(
         "https://rpkntkivikvwisgwgkzx.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwa250a2l2aWt2d2lzZ3dna3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDk5NjgsImV4cCI6MjA4ODEyNTk2OH0._EQI_iPpCGCjXmamFnACTSjy57X_JGBcKNx4vbsRw_8"
@@ -126,7 +141,7 @@
         body.innerHTML = '';
 
         data.forEach(guest => {
-            const actionHTML = guest.is_scanned 
+            const checkInHTML = guest.is_scanned 
                 ? '<span class="status-badge">✅ CHECKED IN</span>' 
                 : `<button class="verify-btn" onclick="manualVerify('${guest.ticket_id}', '${guest.full_name}')">Verify Now</button>`;
 
@@ -135,7 +150,12 @@
                 <td>${guest.full_name}</td>
                 <td>${guest.phone_number || 'N/A'}</td>
                 <td style="font-family:monospace">${guest.mpesa_code}</td>
-                <td>${actionHTML}</td>
+                <td>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        ${checkInHTML}
+                        <button class="verify-btn" style="border-color:var(--accent); color:var(--accent);" onclick="downloadTicket('${guest.ticket_id}', '${guest.qr_token}', '${guest.full_name}')">Download</button>
+                    </div>
+                </td>
             </tr>`;
             body.innerHTML += row;
         });
@@ -182,6 +202,59 @@
         link.href = encodeURI(csvContent);
         link.download = "Gems_Guest_List.csv";
         link.click();
+    }
+
+    // --- TICKET GENERATION ---
+    const bg = new Image(); 
+    bg.src = "background.jpeg";
+
+    function downloadTicket(id, token, name) {
+        QRCode.toDataURL(token, { margin: 1, width: 220 }, (err, url) => {
+            if (err) return alert("QR Error");
+            drawAndDownload(id, url, name);
+        });
+    }
+
+    function drawAndDownload(id, qrUrl, guestName) {
+        const canvas = document.getElementById("ticketCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        ctx.fillStyle = "white"; 
+        ctx.fillRect(0,0,1500,400);
+        
+        if (bg.complete) {
+            ctx.drawImage(bg, 0, 0, 1200, 400);
+            finishTicket(ctx, id, qrUrl, guestName);
+        } else {
+            bg.onload = () => {
+                ctx.drawImage(bg, 0, 0, 1200, 400);
+                finishTicket(ctx, id, qrUrl, guestName);
+            };
+        }
+    }
+
+    function finishTicket(ctx, id, qrUrl, guestName) {
+        const qr = new Image(); 
+        qr.onload = () => {
+            ctx.drawImage(qr, 1240, 90, 220, 220);
+            ctx.save();
+            ctx.translate(1485, 380); 
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle = "black"; 
+            ctx.font = "bold 22px Courier New";
+            ctx.fillText("ID: " + id, 0, 0);
+            ctx.fillStyle = "#888"; 
+            ctx.font = "bold 18px sans-serif";
+            ctx.fillText(guestName.toUpperCase(), 210, 0);
+            ctx.restore();
+
+            // Trigger download after drawing
+            const link = document.createElement('a');
+            link.download = `${id}_${guestName.replace(/\s+/g, '_')}.jpg`;
+            link.href = document.getElementById("ticketCanvas").toDataURL("image/jpeg", 1.0);
+            link.click();
+        };
+        qr.src = qrUrl;
     }
 
     loadData();
